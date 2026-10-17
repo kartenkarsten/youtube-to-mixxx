@@ -59,6 +59,16 @@ Auf einer YouTube-Videoseite erscheint eine Aktion, die den ausgewählten Titel 
    - Tests für ungültige URLs, fehlende Abhängigkeiten, nicht erreichbares Mixxx, Schreibfehler und abgebrochene Downloads.
    - Installation, Konfiguration, unterstützte Plattformen und bekannte Grenzen dokumentieren.
 
-## Noch zu verifizieren
+## Verifikation
 
-- Da der konfigurierte Downloadpfad Teil der Mixxx-Musikbibliothek ist, ist zu prüfen, ob Mixxx neu hinzugefügte Dateien bei laufendem Betrieb automatisch erkennt. Falls nicht, wird ein unterstützter Scan ausgelöst; manueller Scan bleibt der vereinbarte Fallback.
+- Für Mixxx 2.5.6 ist kein unterstützter Remote-Aufruf des Bibliotheksscans dokumentiert. Der manuelle Scan ist deshalb umgesetzt; siehe `README.md`.
+- Der End-to-End-Test mit einem konkreten YouTube-Video und der Mixxx-GUI ist noch manuell auszuführen.
+
+## Umsetzungsstand
+
+- Firefox-Erweiterung (Manifest V3) mit Aktionsbuttons auf Videoseiten und Suchergebnissen, Statusmeldungen und Optionsseite implementiert.
+- Native-Messaging-Host mit URL-/Videoart-Prüfung, `yt-dlp`/`ffmpeg`, MP3-Metadaten/Cover, Duplikatarchiv und konfigurierbarem Downloadpfad implementiert.
+- Host lokal registriert; Nachrichtenrahmen und Konfigurationsantwort wurden mit dem installierten Host geprüft.
+- Mixxx 2.5.6, Firefox 156, yt-dlp und ffmpeg auf dem Zielsystem gefunden. Die Mixxx-Dokumentation beschreibt „Library → Rescan Library“, aber keinen unterstützten Remote-Aufruf des Scans; daher zeigt die Erweiterung den manuellen Scan als Fallback an.
+- In der vorhandenen Mixxx-Datenbank war `~/Downloads` als Musikordner eingetragen. Für den festgelegten Standard `~/Musik/YouTube` muss `~/Musik` in Mixxx als Musikordner ergänzt werden.
+- Automatisierte Tests für URL-Validierung, Einstellungen und Native-Messaging-Framing sind vorhanden. Ein tatsächlicher YouTube-Download und der anschließende Sichtbarkeitstest in der Mixxx-GUI benötigen einen ausgewählten Videolink und bleiben als manueller End-to-End-Test offen.

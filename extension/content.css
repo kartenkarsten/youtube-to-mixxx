@@ -1,0 +1,33 @@
+.ytmixxx-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  margin: 8px 8px 8px 0;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 18px;
+  background: #2f7d32;
+  color: white;
+  font: 500 14px/1.2 Roboto, Arial, sans-serif;
+  cursor: pointer;
+}
+
+.ytmixxx-button:hover:not(:disabled) {
+  background: #246428;
+}
+
+.ytmixxx-button:disabled {
+  cursor: progress;
+  opacity: 0.85;
+}
+
+.ytmixxx-button[data-state="error"] {
+  background: #b3261e;
+  max-width: 100%;
+  white-space: normal;
+}
+
+.ytmixxx-button[data-state="success"] {
+  background: #245c27;
+}
