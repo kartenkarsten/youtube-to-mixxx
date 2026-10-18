@@ -13,8 +13,10 @@ for dependency in python3 yt-dlp ffmpeg systemctl; do
 done
 
 install -d -m 700 "${INSTALL_DIR}" "${UNIT_DIR}"
-install -m 755 "${ROOT}/native_host/youtube_to_mixxx.py" "${INSTALL_DIR}/youtube_to_mixxx.py"
-install -m 755 "${ROOT}/native_host/http_bridge.py" "${INSTALL_DIR}/http_bridge.py"
+install -m 755 "${ROOT}/local_service/downloader.py" "${INSTALL_DIR}/downloader.py"
+install -m 755 "${ROOT}/local_service/http_bridge.py" "${INSTALL_DIR}/http_bridge.py"
+rm -f "${INSTALL_DIR}/youtube_to_mixxx.py" "${INSTALL_DIR}/__pycache__/youtube_to_mixxx."*.pyc
+rm -f "${HOME}/.mozilla/native-messaging-hosts/org.mixxx.youtube_downloader.json"
 
 cat > "${UNIT_DIR}/youtube-to-mixxx-http.service" <<EOF
 [Unit]
@@ -34,7 +36,8 @@ WantedBy=default.target
 EOF
 
 systemctl --user daemon-reload
-systemctl --user enable --now youtube-to-mixxx-http.service
+systemctl --user enable youtube-to-mixxx-http.service
+systemctl --user restart youtube-to-mixxx-http.service
 
 printf 'Tampermonkey-Brücke installiert und gestartet.\n'
 printf 'Userscript zum Importieren: %s/userscripts/youtube-to-mixxx.user.js\n' "${ROOT}"

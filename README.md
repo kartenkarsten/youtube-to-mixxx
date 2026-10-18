@@ -37,7 +37,7 @@ Tampermonkey kann über [addons.mozilla.org](https://addons.mozilla.org/firefox/
 
 ## Lokaler Dienst
 
-Tampermonkey kann Native Messaging nicht direkt verwenden. Das Userscript sendet deshalb den ausgewählten Videolink an die lokale HTTP-Brücke. Diese läuft als User-Dienst und lauscht nur auf `127.0.0.1:8765`; sie lädt nichts auf einen externen Server hoch. Die Brücke prüft den YouTube-Link und startet den vorhandenen Downloader. Normale Anfragen von anderen Website-Ursprüngen werden abgewiesen.
+Das Userscript kann aus dem Browser heraus keine lokalen Programme starten. Es sendet deshalb den ausgewählten Videolink an die lokale HTTP-Brücke. Diese läuft als User-Dienst und lauscht nur auf `127.0.0.1:8765`; sie lädt nichts auf einen externen Server hoch. Die Brücke prüft den YouTube-Link und startet den Downloader. Normale Anfragen von anderen Website-Ursprüngen werden abgewiesen.
 
 Dienststatus und Protokoll lassen sich so prüfen:
 
@@ -94,7 +94,7 @@ Nach Änderungen oder einem Update des Repositorys:
 
 ```sh
 python -m unittest discover -s tests -v
-python -m py_compile native_host/youtube_to_mixxx.py native_host/http_bridge.py
+python -m py_compile local_service/downloader.py local_service/http_bridge.py
 node --check userscripts/youtube-to-mixxx.user.js
 ```
 

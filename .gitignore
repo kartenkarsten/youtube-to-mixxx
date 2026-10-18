@@ -1,5 +1,2 @@
 __pycache__/
 *.py[cod]
-web-ext-artifacts/
-dist/
-*.xpi
