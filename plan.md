@@ -21,6 +21,8 @@ Ein Tampermonkey-Userscript fügt auf YouTube-Videoseiten und Suchergebnissen ei
    - Zeigt Download-Erfolg, Duplikate und Fehler an.
 2. **Lokale HTTP-Brücke und Downloader** (`local_service/`)
    - Läuft als systemd-User-Dienst und bindet ausschließlich an `127.0.0.1:8765`.
+   - Erstellt ein zufälliges per-installation Bearer-Token mit Dateirechten `0600`; Downloads benötigen das Token und eine gültige Herkunft.
+   - Gibt das Token nur über einen nicht CORS-freigegebenen Endpoint an das privilegierte Userscript aus.
    - Weist normale Requests von anderen Website-Ursprüngen ab und validiert YouTube-URLs.
    - Ruft `yt-dlp` und `ffmpeg` ohne Shell-Interpolation auf und legt MP3, Metadaten und Cover im konfigurierten Zielordner ab.
    - Nutzt ein Archiv unter `~/.config/youtube-to-mixxx/downloaded-ids.txt`, um erneute Downloads zu verhindern.

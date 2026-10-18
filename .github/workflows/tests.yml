@@ -1,0 +1,23 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - name: Run unit tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Check Python syntax
+        run: python3 -m py_compile local_service/downloader.py local_service/http_bridge.py
+      - name: Check userscript syntax
+        run: node --check userscripts/youtube-to-mixxx.user.js
+      - name: Check installer syntax
+        run: bash -n install-tampermonkey.sh

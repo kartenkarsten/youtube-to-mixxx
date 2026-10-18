@@ -1,11 +1,18 @@
 // ==UserScript==
 // @name         YouTube zu Mixxx
-// @namespace    local.youtube-to-mixxx
-// @version      1.0.0
+// @namespace    https://github.com/kartenkarsten/youtube-to-mixxx
+// @version      1.1.0
 // @description  Speichert normale YouTube-Videos als MP3 für Mixxx.
+// @license      MIT
+// @homepageURL  https://github.com/kartenkarsten/youtube-to-mixxx
+// @supportURL   https://github.com/kartenkarsten/youtube-to-mixxx/issues
+// @downloadURL  https://raw.githubusercontent.com/kartenkarsten/youtube-to-mixxx/main/userscripts/youtube-to-mixxx.user.js
+// @updateURL    https://raw.githubusercontent.com/kartenkarsten/youtube-to-mixxx/main/userscripts/youtube-to-mixxx.user.js
 // @match        https://www.youtube.com/watch*
 // @match        https://www.youtube.com/results*
 // @grant        GM_xmlhttpRequest
+// @grant        GM_getValue
+// @grant        GM_setValue
 // @connect      127.0.0.1
 // @run-at       document-idle
 // ==/UserScript==
@@ -14,7 +21,8 @@
   "use strict";
 
   const BUTTON_CLASS = "ytmixxx-tampermonkey-button";
-  const API_URL = "http://127.0.0.1:8765/download";
+  const API_ROOT = "http://127.0.0.1:8765";
+  const TOKEN_KEY = "youtubeToMixxxBridgeToken";
   let scanQueued = false;
 
   function videoUrl(rawUrl) {
@@ -36,12 +44,50 @@
     button.style.cursor = button.disabled ? (state === "busy" ? "progress" : "default") : "pointer";
   }
 
-  function requestDownload(url) {
+  function requestBridgeToken() {
+    return new Promise((resolve, reject) => {
+      GM_xmlhttpRequest({
+        method: "GET",
+        url: `${API_ROOT}/token`,
+        onload(response) {
+          let result;
+          try {
+            result = JSON.parse(response.responseText);
+          } catch {
+            reject(new Error("Ungültige Antwort vom lokalen Downloader."));
+            return;
+          }
+          if (response.status < 200 || response.status >= 300 || typeof result.token !== "string") {
+            reject(new Error(result.error || `Lokaler Dienst antwortete mit HTTP ${response.status}.`));
+            return;
+          }
+          resolve(result.token);
+        },
+        onerror() {
+          reject(new Error("Lokaler Dienst nicht erreichbar. Bitte den Tampermonkey-Dienst prüfen."));
+        },
+        ontimeout() {
+          reject(new Error("Zeitüberschreitung beim lokalen Dienst."));
+        }
+      });
+    });
+  }
+
+  async function getBridgeToken(refresh = false) {
+    const saved = refresh ? "" : await GM_getValue(TOKEN_KEY, "");
+    if (saved) return saved;
+    const token = await requestBridgeToken();
+    await GM_setValue(TOKEN_KEY, token);
+    return token;
+  }
+
+  function postDownload(url, token) {
     return new Promise((resolve, reject) => {
       GM_xmlhttpRequest({
         method: "POST",
-        url: API_URL,
+        url: `${API_ROOT}/download`,
         headers: {
+          "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json",
           "X-YTMX-Bridge": "tampermonkey"
         },
@@ -54,11 +100,7 @@
             reject(new Error("Ungültige Antwort vom lokalen Downloader."));
             return;
           }
-          if (response.status < 200 || response.status >= 300 || !result.ok) {
-            reject(new Error(result.error || `Lokaler Downloader antwortete mit HTTP ${response.status}.`));
-            return;
-          }
-          resolve(result);
+          resolve({ status: response.status, result });
         },
         onerror() {
           reject(new Error("Lokaler Downloader nicht erreichbar. Bitte den Tampermonkey-Dienst prüfen."));
@@ -68,6 +110,19 @@
         }
       });
     });
+  }
+
+  async function requestDownload(url) {
+    let token = await getBridgeToken();
+    let response = await postDownload(url, token);
+    if (response.status === 403) {
+      token = await getBridgeToken(true);
+      response = await postDownload(url, token);
+    }
+    if (response.status < 200 || response.status >= 300 || !response.result.ok) {
+      throw new Error(response.result.error || `Lokaler Downloader antwortete mit HTTP ${response.status}.`);
+    }
+    return response.result;
   }
 
   function makeButton(url) {
