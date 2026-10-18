@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import Callable
 from urllib.parse import parse_qs, urlparse
 
 HOST_NAME = "org.mixxx.youtube_downloader"
@@ -118,19 +119,22 @@ def read_message() -> dict[str, object] | None:
     return data
 
 
-def emit_progress(line: str) -> None:
+def emit_progress(line: str, notify: Callable[[dict[str, object]], None] = send_message) -> None:
     match = re.search(r"\[download\]\s+(\d+(?:\.\d+)?)%", line)
     if match:
-        send_message({"event": "progress", "percent": min(100, int(float(match.group(1))))})
+        notify({"event": "progress", "percent": min(100, int(float(match.group(1))))})
     elif "Extracting URL" in line or "Extracting webpage" in line:
-        send_message({"event": "progress", "message": "Videoinformationen werden geprüft …"})
+        notify({"event": "progress", "message": "Videoinformationen werden geprüft …"})
     elif "Destination:" in line or "Downloading" in line:
-        send_message({"event": "progress", "message": "Audio wird heruntergeladen …"})
+        notify({"event": "progress", "message": "Audio wird heruntergeladen …"})
     elif "Post-process" in line or "Fixing" in line:
-        send_message({"event": "progress", "message": "MP3 und Metadaten werden erstellt …"})
+        notify({"event": "progress", "message": "MP3 und Metadaten werden erstellt …"})
 
 
-def run_download(raw_url: object) -> dict[str, object]:
+def run_download(
+    raw_url: object,
+    notify: Callable[[dict[str, object]], None] = send_message,
+) -> dict[str, object]:
     global ACTIVE_PROCESS
     url = validate_youtube_url(raw_url)
     settings = load_settings()
@@ -170,7 +174,7 @@ def run_download(raw_url: object) -> dict[str, object]:
         url,
     ]
     archive.parent.mkdir(parents=True, exist_ok=True)
-    send_message({"event": "progress", "message": "YouTube-Video und Live-Status werden geprüft …"})
+    notify({"event": "progress", "message": "YouTube-Video und Live-Status werden geprüft …"})
     try:
         ACTIVE_PROCESS = subprocess.Popen(
             command,
@@ -197,7 +201,7 @@ def run_download(raw_url: object) -> dict[str, object]:
             if line.startswith("ERROR:"):
                 error_lines.append(line.removeprefix("ERROR:").strip())
                 error_lines = error_lines[-3:]
-            emit_progress(line)
+            emit_progress(line, notify)
         return_code = ACTIVE_PROCESS.wait()
     except OSError as exc:
         raise HostError(f"yt-dlp konnte nicht gestartet werden: {exc}") from exc
@@ -217,11 +221,11 @@ def run_download(raw_url: object) -> dict[str, object]:
         detail = " ".join(error_lines)
         raise HostError(f"Download/MP3-Konvertierung fehlgeschlagen{': ' + detail if detail else '.'}")
     if archive_duplicate:
-        send_message({"event": "done", "duplicate": True, "path": ""})
+        notify({"event": "done", "duplicate": True, "path": ""})
         return {"duplicate": True}
     if not output_path or not Path(output_path).is_file():
         raise HostError("yt-dlp meldete keinen Fehler, aber es wurde keine MP3-Datei gefunden.")
-    send_message({"event": "done", "duplicate": False, "path": output_path})
+    notify({"event": "done", "duplicate": False, "path": output_path})
     return {"path": output_path}
 
 

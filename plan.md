@@ -17,27 +17,30 @@ Auf einer YouTube-Videoseite erscheint eine Aktion, die den ausgewählten Titel 
 - Gewünscht sind sinnvolle Standardwerte für Qualität, Dateiname/Metadaten und Duplikate.
 - Mixxx soll währenddessen weiterlaufen. Automatisches Aktualisieren ist bevorzugt; ein manueller Scan ist als Fallback akzeptabel.
 - Verwendet wird die Mixxx-Version 2.5.6
+- Die Bedienoberfläche soll dauerhaft über Tampermonkey verfügbar sein, statt nach jedem Firefox-Neustart als temporäres Add-on erneut geladen zu werden.
+- Nach erfolgreichem Download (auch bei einem bereits archivierten Video) darf derselbe Button nicht erneut auslösbar sein.
 
 ## Technische Rahmenbedingungen
 
 - Eine Firefox-WebExtension kann das YouTube-Video nicht selbst in MP3 umwandeln. Dafür braucht es einen lokalen Konverter/Downloader, zum Beispiel `yt-dlp` und `ffmpeg`.
 - Eine Extension kann aus Sicherheitsgründen weder beliebige lokale Verzeichnisse beschreiben noch Mixxx direkt steuern. Deshalb wird ein lokal installierter Native-Messaging-Host für diese Aufgaben benötigt.
+- Ein Tampermonkey-Userscript kann Native Messaging nicht direkt verwenden. Dafür wird eine lokale, nur an Loopback gebundene HTTP-Brücke benötigt; sie lehnt normale Web-Requests ab, die nicht von YouTube stammen.
 - Die konkrete, unterstützte Methode zum automatischen Aktualisieren der Mixxx-Bibliothek muss vor der Implementierung geprüft werden. Ein direkter Eingriff in Mixxx-Datenbankdateien ist nicht vorgesehen.
 - Die Implementierung wird auf die von euch bestätigten Betriebssysteme, Installationsart und Anforderungen zugeschnitten.
 
 ## Vorgeschlagene Architektur
 
-1. **Firefox-Erweiterung (Manifest V3)**
+1. **Browseroberfläche (Firefox-Erweiterung oder Tampermonkey-Userscript)**
    - Content-Script blendet auf unterstützten YouTube-Videoseiten einen klar beschrifteten Button ein.
    - Der Button übergibt die Video-URL an den Native-Messaging-Host und zeigt Fortschritt, Erfolg oder einen verständlichen Fehler an.
    - Eine Optionsseite konfiguriert die Download-/Konvertierungseinstellungen, soweit diese nicht vom Begleitprogramm verwaltet werden.
-2. **Lokaler Begleitdienst (Native Messaging Host)**
+2. **Lokaler Begleitdienst (Native Messaging Host bzw. HTTP-Brücke für Tampermonkey)**
    - Prüft eingehende Nachrichten und akzeptiert nur die vorgesehene Aktion und gültige YouTube-URLs.
    - Lädt die Audioquelle herunter, konvertiert sie mit `yt-dlp`/`ffmpeg` in MP3 und speichert sie im konfigurierten Zielverzeichnis.
-   - Meldet Status und Ergebnis an die Erweiterung zurück.
+   - Meldet Status und Ergebnis an die Browseroberfläche zurück.
    - Stößt nach erfolgreichem Speichern die vereinbarte Mixxx-Aktualisierung an.
 3. **Paketierung und Dokumentation**
-   - Lokale Installationsanleitung für Erweiterung und Native-Messaging-Host einschließlich externer Abhängigkeiten.
+   - Lokale Installationsanleitung für beide Browservarianten und den jeweils benötigten Begleitdienst einschließlich externer Abhängigkeiten.
    - Hinweise zur Konfiguration des Zielordners und zu Fehlerbehebung/Protokollen.
 
 ## Umsetzungsschritte
@@ -50,9 +53,11 @@ Auf einer YouTube-Videoseite erscheint eine Aktion, die den ausgewählten Titel 
    - Einen unterstützten und zuverlässigen Weg zum Aktualisieren der Mixxx-Bibliothek ermitteln und praktisch testen. Falls Mixxx keinen geeigneten Automatisierungsweg bietet, die gewünschte Ersatzlösung mit euch abstimmen.
 3. **Firefox-Erweiterung implementieren**
    - Manifest, Berechtigungen, YouTube-Seitenintegration, Button, Optionsseite und Native-Messaging-Kommunikation.
-   - Statusanzeige und Behandlung von Abbruch, Duplikaten und Verbindungsfehlern.
+   - Button nach Erfolg oder erkanntem Duplikat deaktivieren; bei Fehlern darf ein erneuter Versuch möglich sein.
+   - Tampermonkey-Userscript mit gleichwertiger Seitenintegration ergänzen.
 4. **Begleitdienst implementieren**
    - Validierte Nachrichtenverarbeitung, Download/MP3-Konvertierung, konfigurierbarer Speicherort und Mixxx-Aktualisierung.
+   - Lokale HTTP-Brücke für Tampermonkey mit Loopback-Bindung und Herkunftsprüfung als automatisch gestarteter User-Dienst.
    - Sichere Prozessausführung ohne Shell-Interpolation von Videodaten; klare Fehlermeldungen und begrenzte Protokollierung.
 5. **Prüfen und dokumentieren**
    - End-to-End-Test: Button → Download/MP3 → Zielordner → Mixxx sieht den Titel.
@@ -72,3 +77,6 @@ Auf einer YouTube-Videoseite erscheint eine Aktion, die den ausgewählten Titel 
 - Mixxx 2.5.6, Firefox 156, yt-dlp und ffmpeg auf dem Zielsystem gefunden. Die Mixxx-Dokumentation beschreibt „Library → Rescan Library“, aber keinen unterstützten Remote-Aufruf des Scans; daher zeigt die Erweiterung den manuellen Scan als Fallback an.
 - In der vorhandenen Mixxx-Datenbank war `~/Downloads` als Musikordner eingetragen. Für den festgelegten Standard `~/Musik/YouTube` muss `~/Musik` in Mixxx als Musikordner ergänzt werden.
 - Automatisierte Tests für URL-Validierung, Einstellungen und Native-Messaging-Framing sind vorhanden. Ein tatsächlicher YouTube-Download und der anschließende Sichtbarkeitstest in der Mixxx-GUI benötigen einen ausgewählten Videolink und bleiben als manueller End-to-End-Test offen.
+- Für den Start bei jedem Browserstart ist `build-xpi.sh` ergänzt. Das Zielsystem nutzt Firefox Release 156, das nicht signierte XPI-Dateien nicht dauerhaft installiert; die AMO-Signierung als unlisted ist vorbereitet, muss aber mit einem Mozilla-Konto des Nutzers abgeschlossen werden.
+- Tampermonkey-Alternative ergänzt: `userscripts/youtube-to-mixxx.user.js` ruft die lokale HTTP-Brücke auf; `install-tampermonkey.sh` installiert und aktiviert sie als systemd-User-Dienst. Damit muss kein temporäres Firefox-Add-on erneut geladen werden.
+- Nach erfolgreichem Download oder erkanntem Duplikat wird der jeweilige Firefox- bzw. Tampermonkey-Button deaktiviert. Fehler lassen einen erneuten Versuch zu.

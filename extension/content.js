@@ -18,7 +18,7 @@
   function setButtonState(button, label, state) {
     button.textContent = label;
     button.dataset.state = state;
-    button.disabled = state === "busy";
+    button.disabled = state === "busy" || state === "success";
   }
 
   function makeButton(url) {

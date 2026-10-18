@@ -6,7 +6,10 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "youtube-to-mixxx@local",
-      "strict_min_version": "109.0"
+      "data_collection_permissions": {
+        "required": ["websiteActivity"]
+      },
+      "strict_min_version": "140.0"
     }
   },
   "permissions": ["nativeMessaging"],

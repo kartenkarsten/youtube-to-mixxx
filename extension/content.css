@@ -18,8 +18,12 @@
 }
 
 .ytmixxx-button:disabled {
-  cursor: progress;
+  cursor: default;
   opacity: 0.85;
+}
+
+.ytmixxx-button[data-state="busy"] {
+  cursor: progress;
 }
 
 .ytmixxx-button[data-state="error"] {
