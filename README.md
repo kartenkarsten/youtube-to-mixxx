@@ -1,62 +1,84 @@
-# YouTube zu Mixxx – Tampermonkey für Firefox/Linux
+# YouTube zu Mixxx
 
-[MIT-lizenziert](LICENSE) · [Quellcode auf GitHub](https://github.com/kartenkarsten/youtube-to-mixxx)
+Dieses Projekt besteht aus einem Tampermonkey-Userscript und einem lokalen Dienst. Das Userscript ergänzt auf normalen YouTube-Videoseiten und in Suchergebnissen einen Button. Der lokale Dienst lädt die Audiospur mit `yt-dlp`, wandelt sie mit `ffmpeg` in MP3 um und speichert sie im gewählten Ordner.
 
-Das Tampermonkey-Userscript ergänzt auf normalen YouTube-Videoseiten und in YouTube-Suchergebnissen eine Schaltfläche. Sie lädt die Audiospur über `yt-dlp`, konvertiert sie mit `ffmpeg` in MP3 und speichert sie im konfigurierten Ordner. Shorts und Live-Streams werden abgewiesen. Das Userscript bleibt nach der einmaligen Installation in Tampermonkey gespeichert und wird bei passenden YouTube-Seiten automatisch ausgeführt.
+Unterstützt werden normale Videos, keine Shorts oder Live-Streams. Das Projekt steht unter der [MIT-Lizenz](LICENSE).
 
 ## Voraussetzungen
 
-- Linux mit Firefox und installierter Tampermonkey-Erweiterung
-- Python 3
-- `yt-dlp` und `ffmpeg`
-- systemd mit aktivem User-Manager (`systemctl --user`)
-- Mixxx 2.5.6, wenn die gespeicherten Titel anschließend in Mixxx verwendet werden sollen
+- Linux mit systemd und einem aktiven User-Dienstmanager
+- Firefox mit installierter [Tampermonkey-Erweiterung](https://addons.mozilla.org/firefox/addon/tampermonkey/)
+- Python 3, `yt-dlp` und `ffmpeg`
+- Mixxx 2.5.6, falls du die heruntergeladenen Titel in Mixxx verwenden möchtest
 
-Unter Arch Linux lassen sich Firefox, Mixxx, ffmpeg und Git aus den offiziellen Paketquellen und `yt-dlp` aus dem AUR installieren:
+Unter Arch Linux kannst du die offiziellen Pakete so installieren:
 
 ```sh
-sudo pacman -S firefox mixxx ffmpeg git
-yay -S yt-dlp
+sudo pacman -S firefox git mixxx ffmpeg python
 ```
 
-Tampermonkey kann über [addons.mozilla.org](https://addons.mozilla.org/firefox/addon/tampermonkey/) installiert werden. Das Installationsskript dieses Projekts benötigt keine Root-Rechte und installiert keine Systempakete.
+Installiere `yt-dlp` aus dem AUR mit deinem AUR-Helfer, zum Beispiel `yay -S yt-dlp`. Installiere außerdem Tampermonkey in Firefox, falls es noch nicht installiert ist.
 
-## Installation
+## Erstinstallation
 
-1. Tampermonkey und die Systemabhängigkeiten installieren. Repository klonen und den lokalen Dienst einrichten:
+### 1. Lokalen Dienst installieren
 
-   ```sh
-   git clone https://github.com/kartenkarsten/youtube-to-mixxx.git
-   cd youtube-to-mixxx
-   ./install-tampermonkey.sh
-   ```
+Öffne ein Terminal und klone das Repository:
 
-   Das Skript kopiert den Downloader und die HTTP-Brücke nach `~/.local/lib/youtube-to-mixxx/` und richtet `youtube-to-mixxx-http.service` als systemd-User-Dienst ein. Der Dienst wird gestartet und bei künftigen Anmeldungen automatisch aktiviert. Beim ersten Start wird ein zufälliges Bridge-Token angelegt und mit Dateirechten `0600` gespeichert.
+```sh
+git clone https://github.com/kartenkarsten/youtube-to-mixxx.git
+cd youtube-to-mixxx
+./install-tampermonkey.sh
+```
 
-2. Das [Userscript direkt über GitHub installieren](https://raw.githubusercontent.com/kartenkarsten/youtube-to-mixxx/main/userscripts/youtube-to-mixxx.user.js). Tampermonkey zeigt die Installationsseite; dort **Installieren** auswählen.
+Das Skript installiert den Downloader und die HTTP-Brücke in `~/.local/lib/youtube-to-mixxx/` und richtet den systemd-User-Dienst `youtube-to-mixxx-http.service` ein. Es benötigt keine Root-Rechte. Der Dienst wird sofort gestartet und bei zukünftigen Anmeldungen automatisch gestartet.
 
-   Wenn du noch die zuvor manuell eingefügte Userscript-Version verwendest, entferne diese zuerst in Tampermonkey, damit nicht die alte Version ohne Token-Anmeldung ausgeführt wird.
-
-3. Falls Firefox oder Tampermonkey nach Zugriff auf `127.0.0.1` fragt, den Zugriff für das Userscript erlauben.
-
-4. Eine normale YouTube-Videoseite oder Suchergebnisseite neu laden. Dort sollte **Als MP3 für Mixxx speichern** erscheinen.
-
-## Lokaler Dienst
-
-Das Userscript kann aus dem Browser heraus keine lokalen Programme starten. Es sendet deshalb den ausgewählten Videolink an die lokale HTTP-Brücke. Diese läuft als User-Dienst und lauscht nur auf `127.0.0.1:8765`. Downloads benötigen ein zufälliges Bearer-Token, das der Dienst pro Installation anlegt. Tampermonkey liest es über einen Endpunkt ohne CORS-Freigabe und speichert es in seinem lokalen Userscript-Speicher; gewöhnliche Webseiten können die Antwort dadurch nicht lesen. Die Token-Datei liegt unter `~/.config/youtube-to-mixxx/bridge-token` mit Dateirechten `0600`. Die Brücke prüft zusätzlich den YouTube-Link und weist normale Anfragen von anderen Website-Ursprüngen ab.
-
-Das Token schützt die lokale Schnittstelle vor gewöhnlichen Cross-Site-Aufrufen. Es ist keine Sicherheitsgrenze gegenüber anderen Programmen oder Browser-Erweiterungen, die bereits mit denselben Benutzerrechten laufen. `yt-dlp` kommuniziert für den Download direkt mit YouTube; es gibt keinen separaten Projektserver.
-
-Dienststatus und Protokoll lassen sich so prüfen:
+Prüfe, dass der Dienst läuft:
 
 ```sh
 systemctl --user status youtube-to-mixxx-http.service
-journalctl --user -u youtube-to-mixxx-http.service
 ```
 
-## Downloadordner und Mixxx-Bibliothek
+### 2. Userscript über URL installieren
 
-Der Standard-Downloadordner ist `~/Musik/YouTube`. Ein anderer Pfad kann in `~/.config/youtube-to-mixxx/config.json` eingetragen werden, zum Beispiel:
+Öffne den folgenden Link in Firefox:
+
+[YouTube zu Mixxx in Tampermonkey installieren](https://raw.githubusercontent.com/kartenkarsten/youtube-to-mixxx/main/userscripts/youtube-to-mixxx.user.js)
+
+Tampermonkey zeigt eine Installationsseite. Wähle dort **Installieren**. Erlaube den Zugriff auf `127.0.0.1`, falls Tampermonkey danach fragt. Falls du noch eine ältere, manuell eingefügte Version dieses Scripts hast, entferne diese zuerst in Tampermonkey.
+
+### 3. Installation prüfen
+
+Lade eine normale YouTube-Videoseite oder Suchergebnisseite neu. Neben dem Video sollte **Als MP3 für Mixxx speichern** erscheinen. Der erste Download funktioniert nur, wenn der lokale Dienst läuft.
+
+## Bridge-Token: keine manuelle Eingabe nötig
+
+Das Token verbindet das Userscript mit dem lokalen Dienst. Du musst es **nicht selbst erzeugen, kopieren oder in den Script-Code eintragen**.
+
+1. Beim ersten Start des lokalen Dienstes wird automatisch ein zufälliges Token erzeugt.
+2. Es wird lokal unter `~/.config/youtube-to-mixxx/bridge-token` gespeichert. Die Datei ist nur für deinen Benutzer lesbar und schreibbar (`0600`). Das Token bleibt bei Dienst- und Rechnerneustarts erhalten.
+3. Beim ersten Download fragt das Tampermonkey-Userscript das Token beim lokalen Dienst ab und speichert es in seinem eigenen Speicher.
+4. Bei jedem Download sendet das Userscript das Token zur Authentifizierung an `127.0.0.1`. Der Token-Endpunkt gibt keine CORS-Freigabe, sodass gewöhnliche Webseiten das Token nicht auslesen können.
+
+Das Token wird nicht in GitHub, in den öffentlichen Userscript-Code oder an einen Projektserver übertragen. Gib die Datei `bridge-token` nicht weiter und veröffentliche ihren Inhalt nicht. Das Token schützt gegen gewöhnliche websitebasierte Zugriffe, aber nicht gegen andere Programme oder Browser-Erweiterungen, die bereits mit deinem Benutzerkonto laufen.
+
+### Token neu erzeugen
+
+Falls die Token-Datei gelöscht oder beschädigt wurde, stoppe den Dienst, lösche die Datei und starte den Dienst neu:
+
+```sh
+systemctl --user stop youtube-to-mixxx-http.service
+rm -f ~/.config/youtube-to-mixxx/bridge-token
+systemctl --user start youtube-to-mixxx-http.service
+```
+
+Der Dienst erzeugt beim Start ein neues Token. Das Userscript erkennt das alte Token beim nächsten Download, ruft das neue automatisch ab und speichert es.
+
+Wenn der systemd-User-Dienst mit `XDG_CONFIG_HOME` gestartet wird, liegen Token, Einstellungen und Download-Archiv unter `$XDG_CONFIG_HOME/youtube-to-mixxx/` statt unter `~/.config/youtube-to-mixxx/`.
+
+## Downloadordner und Mixxx
+
+Der Standardordner ist `~/Musik/YouTube`. Wenn du einen anderen Ordner möchtest, lege die Datei `~/.config/youtube-to-mixxx/config.json` mit folgendem Inhalt an und ersetze den Pfad:
 
 ```json
 {
@@ -64,88 +86,55 @@ Der Standard-Downloadordner ist `~/Musik/YouTube`. Ein anderer Pfad kann in `~/.
 }
 ```
 
-Der Zielordner muss innerhalb eines in Mixxx eingetragenen Musikordners liegen. Den Musikordner kannst du in Mixxx unter **Preferences → Library → Music Directories** ergänzen. Für das Standardziel `~/Musik/YouTube` muss mindestens `~/Musik` eingetragen sein.
+Der Ordner wird beim Download bei Bedarf angelegt. Er muss innerhalb eines in Mixxx eingetragenen Musikordners liegen. Trage zum Beispiel `~/Musik` in Mixxx unter **Preferences → Library → Music Directories** ein.
 
-Mixxx 2.5.6 dokumentiert keinen unterstützten Remote-Aufruf zum Aktualisieren der Bibliothek. Nach einem erfolgreichen Download zeigt der Button daher den Hinweis, in Mixxx **Library → Rescan Library** auszuführen. Alternativ kann **Rescan on startup** neue Titel beim nächsten Programmstart erfassen. Die Anwendung verändert keine Mixxx-Datenbankdateien.
+Mixxx 2.5.6 bietet keinen dokumentierten unterstützten Remote-Aufruf zum Aktualisieren der Bibliothek. Nach dem Download zeigt der Button deshalb den Hinweis, in Mixxx **Library → Rescan Library** auszuführen. Alternativ kannst du **Rescan on startup** aktivieren. Mixxx-Datenbankdateien werden nicht direkt verändert.
 
 ## Downloadverhalten
 
-- Audio wird als MP3 mit 192 kbit/s gespeichert.
-- Verfügbare Metadaten und das Thumbnail-Cover werden eingebettet; der Uploader wird als Interpret verwendet.
-- Dateiname: `Titel [YouTube-ID].mp3`.
-- `yt-dlp` speichert bereits geladene Video-IDs im Archiv `~/.config/youtube-to-mixxx/downloaded-ids.txt` und lädt sie nicht erneut.
-- Nach erfolgreichem Download wird der Button auf der aktuellen Seite deaktiviert. Bei einem archivierten Video meldet der Downloader „Bereits heruntergeladen“ und deaktiviert den Button ebenfalls.
-- Nach einem Seitenneuladen kann der Button wieder erscheinen. Das Download-Archiv verhindert dabei einen erneuten Download und meldet das Video als bereits geladen.
+- MP3 mit 192 kbit/s; verfügbare Metadaten und Thumbnail-Cover werden eingebettet.
+- Der Uploader wird als Interpret verwendet; der Dateiname enthält Titel und YouTube-ID.
+- Das Archiv `~/.config/youtube-to-mixxx/downloaded-ids.txt` verhindert erneute Downloads desselben Videos.
+- Nach Erfolg oder erkanntem Duplikat wird der Button deaktiviert. Nach einem Seitenneuladen kann er wieder erscheinen; das Archiv verhindert weiterhin einen erneuten Download.
+- YouTube und Live-Streams werden vom lokalen Downloader geprüft; unterstützt werden nur normale YouTube-Videos.
 
 ## Aktualisieren
 
-Das Userscript enthält `@updateURL` und `@downloadURL` auf die GitHub-Raw-Datei. Tampermonkey kann neue Versionen anhand der erhöhten `@version` automatisch finden. Für Änderungen am lokalen Dienst:
+Tampermonkey kann Userscript-Updates über GitHub automatisch finden. Für Updates des lokalen Dienstes:
 
 ```sh
+cd ~/youtube-to-mixxx
 git pull
 ./install-tampermonkey.sh
 ```
 
-Der Installer kopiert die Dateien und startet den Dienst mit dem aktualisierten Code neu.
-
-## Datenschutz, Nutzung und Abhängigkeiten
-
-- Es gibt keine Analyse-, Telemetrie- oder Projektserver-Übermittlung. Die ausgewählte URL wird lokal verarbeitet; `yt-dlp` ruft YouTube auf.
-- Lade nur Inhalte herunter, für deren Speicherung du berechtigt bist, und beachte die geltenden YouTube-Nutzungsbedingungen.
-- Dieses Projekt steht unter der MIT-Lizenz. `yt-dlp`, FFmpeg, Firefox, Tampermonkey und Mixxx sind eigenständige Drittanbieterprojekte und werden nicht mit diesem Repository ausgeliefert. Hinweise und Links stehen in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
-- Sicherheitslücken bitte gemäß [`SECURITY.md`](SECURITY.md) vertraulich melden.
-
-## Veröffentlichung und Maintainer
-
-Der Userscript-Link erwartet den GitHub-Branch `main`:
-
-```text
-https://raw.githubusercontent.com/kartenkarsten/youtube-to-mixxx/main/userscripts/youtube-to-mixxx.user.js
-```
-
-Bei Änderungen am Userscript die `@version` erhöhen und die Änderungen nach `main` veröffentlichen. Änderungen am lokalen Dienst werden über `install-tampermonkey.sh` verteilt. Vor einem Release Tests ausführen und Installation, HTTP-Dienst sowie einen erfolgreichen Download in Firefox/Tampermonkey praktisch prüfen.
-
-```sh
-python -m unittest discover -s tests -v
-python -m py_compile local_service/downloader.py local_service/http_bridge.py
-node --check userscripts/youtube-to-mixxx.user.js
-bash -n install-tampermonkey.sh
-```
-
-Das GitHub-Repository `kartenkarsten/youtube-to-mixxx` muss als **öffentliches, leeres Repository** angelegt und der Branch `main` dorthin gepusht werden, bevor der URL-Installationslink erreichbar ist. Ein öffentliches Repository ist erforderlich, damit Tampermonkey das Userscript ohne GitHub-Anmeldung abrufen kann.
-
-Für die erste Veröffentlichung aus diesem lokalen Repository:
-
-```sh
-git add -A
-git commit -m "Prepare GitHub release"
-git push -u origin main
-```
+Der Installer kopiert die aktualisierten Dateien und startet den Dienst neu.
 
 ## Fehlerbehebung
 
-- **Der Button erscheint nicht:** Prüfen, ob das Userscript in Tampermonkey aktiviert ist und die YouTube-Seite neu laden. Unterstützt werden normale Videos und Suchergebnisse, keine Shorts oder Live-Streams.
-- **„Lokaler Dienst nicht erreichbar“:** Status des Dienstes prüfen. Bei einem Fehler `journalctl --user -u youtube-to-mixxx-http.service` ansehen und den Dienst mit `systemctl --user restart youtube-to-mixxx-http.service` neu starten.
-- **„Zugriff verweigert“:** Prüfen, ob die Bridge-Token-Datei existiert und der Dienst läuft. Bei einem verlorenen oder ungültigen Token den Dienst stoppen, `~/.config/youtube-to-mixxx/bridge-token` löschen und den Dienst neu starten. Das Userscript ruft beim nächsten Versuch ein neues Token ab.
-- **Tampermonkey kann die lokale Adresse nicht aufrufen:** Prüfen, ob der Zugriff auf `127.0.0.1` in Tampermonkey/Firefox erlaubt ist und der Dienst auf Port `8765` läuft.
-- **Download oder Konvertierung schlägt fehl:** Prüfen, ob `yt-dlp` und `ffmpeg` installiert sind. YouTube-Änderungen können ein Update von `yt-dlp` erfordern.
-- **Mixxx zeigt den Titel nicht:** Prüfen, ob der Downloadordner in einem Mixxx-Musikordner liegt, danach **Library → Rescan Library** ausführen.
-- **Protokolle:** Fehler und Zugriffe der HTTP-Brücke stehen im systemd-Journal des User-Dienstes.
+- **Der Button erscheint nicht:** Prüfe, ob Tampermonkey und das Userscript aktiviert sind; lade YouTube anschließend neu.
+- **„Lokaler Dienst nicht erreichbar“:** Prüfe den Dienststatus und das Journal:
 
-## Entwicklung und Tests
+  ```sh
+  systemctl --user status youtube-to-mixxx-http.service
+  journalctl --user -u youtube-to-mixxx-http.service
+  ```
 
-```sh
-python -m unittest discover -s tests -v
-python -m py_compile local_service/downloader.py local_service/http_bridge.py
-node --check userscripts/youtube-to-mixxx.user.js
-```
+- **„Zugriff verweigert“:** Prüfe, ob der Dienst läuft. Das Userscript versucht ein ungültiges oder veraltetes Token automatisch zu erneuern. Falls nötig, folge den Schritten unter [Token neu erzeugen](#token-neu-erzeugen).
+- **Tampermonkey kann `127.0.0.1` nicht aufrufen:** Erlaube den lokalen Zugriff, falls Firefox oder Tampermonkey danach fragt, und prüfe, ob der Dienst auf Port `8765` läuft.
+- **Download oder Konvertierung schlägt fehl:** Prüfe, ob `yt-dlp` und `ffmpeg` installiert sind. Bei Änderungen an YouTube kann ein Update von `yt-dlp` nötig sein.
+- **Mixxx zeigt den Titel nicht:** Prüfe, ob der Downloadordner in Mixxx als Musikordner erfasst wird, und führe **Library → Rescan Library** aus.
 
-Die automatisierten Tests prüfen unter anderem YouTube-URL-Validierung, Einstellungen und Downloader-Verhalten. Ein echter YouTube-Download und der anschließende Sichtbarkeitstest in der Mixxx-GUI müssen mit einem ausgewählten Video manuell durchgeführt werden.
+## Datenschutz und Drittanbieter
+
+Die ausgewählte YouTube-URL wird an den lokalen Dienst auf deinem Rechner übergeben. `yt-dlp` kommuniziert für den Download direkt mit YouTube. Es gibt keine Analyse- oder Telemetrieübertragung und keinen Projektserver.
+
+Lade nur Inhalte herunter, für deren Speicherung du berechtigt bist, und beachte die geltenden YouTube-Nutzungsbedingungen. `yt-dlp`, FFmpeg, Firefox, Tampermonkey und Mixxx sind eigenständige Drittanbieterprojekte und werden nicht mit diesem Repository ausgeliefert. Weitere Hinweise stehen in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 ## Deinstallation
 
-1. Das Userscript in Tampermonkey entfernen oder deaktivieren.
-2. Den User-Dienst stoppen und aus dem Autostart nehmen:
+1. Entferne oder deaktiviere **YouTube zu Mixxx** in Tampermonkey.
+2. Stoppe den Dienst und entferne seinen Autostart:
 
    ```sh
    systemctl --user disable --now youtube-to-mixxx-http.service
@@ -153,14 +142,14 @@ Die automatisierten Tests prüfen unter anderem YouTube-URL-Validierung, Einstel
    systemctl --user daemon-reload
    ```
 
-3. Die installierten Programmdateien entfernen:
+3. Entferne die installierten Programmdateien:
 
    ```sh
    rm -rf ~/.local/lib/youtube-to-mixxx
    ```
 
-   Die Einstellungen und das Download-Archiv bleiben unter `~/.config/youtube-to-mixxx/` erhalten. Wenn du sie ebenfalls löschen möchtest:
+Einstellungen, Token und Download-Archiv bleiben dabei unter `~/.config/youtube-to-mixxx/` erhalten. Wenn du auch diese löschen möchtest:
 
-   ```sh
-   rm -rf ~/.config/youtube-to-mixxx
-   ```
+```sh
+rm -rf ~/.config/youtube-to-mixxx
+```
